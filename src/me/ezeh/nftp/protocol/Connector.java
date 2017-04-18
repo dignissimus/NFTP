@@ -141,11 +141,6 @@ public class Connector extends PacketSender {
 }
 
 class NFTPServer extends PacketSender {
-    byte[] trimIntArray(byte[] array, int len){
-        byte[] newArray = new byte[len];
-        System.arraycopy(array, 0, newArray, 0, len);
-        return newArray;
-    }
     ServerSocket server;
 
     NFTPServer(ServerSocket ss) {
@@ -154,6 +149,12 @@ class NFTPServer extends PacketSender {
 
     NFTPServer(int port) throws IOException {
         server = new ServerSocket(port);
+    }
+
+    byte[] trimIntArray(byte[] array, int len) {
+        byte[] newArray = new byte[len];
+        System.arraycopy(array, 0, newArray, 0, len);
+        return newArray;
     }
 
     public void sendFile(Connector client, File file) throws IOException {
@@ -174,7 +175,7 @@ class NFTPServer extends PacketSender {
         //System.out.println("read "+read);
         //System.out.println("buffer = " + Arrays.toString(buffer));
         left -= read;
-        if(buffer.length>read){
+        if (buffer.length > read) {
             buffer = trimIntArray(buffer, read);
         }
         client.writeBytes(concatIntArrays(new int[]{Bytes.FILE}, createStringPacket(new String(buffer))));
@@ -183,7 +184,7 @@ class NFTPServer extends PacketSender {
             //System.out.println("read "+read);
             //System.out.println("buffer = " + Arrays.toString(buffer));
             left -= read;
-            if(buffer.length>read){
+            if (buffer.length > read) {
                 buffer = trimIntArray(buffer, read);
             }
             client.writeBytes(concatIntArrays(new int[]{Bytes.CONTINUE}, createStringPacket(new String(buffer))));
@@ -248,10 +249,19 @@ class NFTPServer extends PacketSender {
                 Socket client = server.accept();
                 System.out.println("New connection!");
                 Connector connection = new Connector(client);
-                handle(connection);
+                new Thread(() -> {
+                    try {
+                        handle(connection);
+                    } catch (SocketException e) {
+                        System.out.println("The client connection was closed unexpectedly");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
 
             } catch (SocketException e) {
                 System.out.println("The client connection was closed unexpectedly");
+                break;
             } catch (IOException e) {
                 e.printStackTrace();
             }
